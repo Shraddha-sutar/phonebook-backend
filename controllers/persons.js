@@ -1,87 +1,33 @@
-// controllers/persons.js
-const Person = require('../models/person')
+// Node.js + Express + Mongoose example
+const express = require('express');
+const Person = require('./models/person'); // mongoose model
+const router = express.Router();
 
-// GET all persons
-const getAllPersons = async (req, res, next) => {
-  try {
-    const persons = await Person.find({})
-    res.json(persons)
-  } catch (err) {
-    next(err)
+// Get all persons
+router.get('/', async (req, res) => {
+  const persons = await Person.find({});
+  res.json(persons);
+});
+
+// Add new person
+router.post('/', async (req, res) => {
+  const { name, number } = req.body;
+
+  if (!name || !number) {
+    return res.status(400).json({ error: 'Name or number missing' });
   }
-}
 
-// GET a person by ID
-const getPersonById = async (req, res, next) => {
-  try {
-    const person = await Person.findById(req.params.id)
-    if (person) {
-      res.json(person)
-    } else {
-      res.status(404).json({ error: 'Person not found' })
-    }
-  } catch (err) {
-    next(err)
-  }
-}
+  const newPerson = new Person({ name, number });
+  const savedPerson = await newPerson.save();
 
-// CREATE new person
-const createPerson = async (req, res, next) => {
-  try {
-    const { name, number } = req.body
+  // ✅ Important: Return the saved object
+  res.json(savedPerson);
+});
 
-    // Check for duplicate name
-    const existing = await Person.findOne({ name })
-    if (existing) {
-      return res.status(409).json({ error: 'Name must be unique; use update to change number' })
-    }
+// Delete person
+router.delete('/:id', async (req, res) => {
+  await Person.findByIdAndRemove(req.params.id);
+  res.status(204).end();
+});
 
-    const person = new Person({ name, number })
-    const saved = await person.save()
-    res.status(201).json(saved)
-  } catch (err) {
-    next(err)
-  }
-}
-
-// DELETE a person
-const deletePerson = async (req, res, next) => {
-  try {
-    const result = await Person.findByIdAndDelete(req.params.id)
-    if (!result) {
-      return res.status(404).json({ error: 'Person not found' })
-    }
-    res.status(204).end()
-  } catch (err) {
-    next(err)
-  }
-}
-
-// UPDATE a person
-const updatePerson = async (req, res, next) => {
-  const { name, number } = req.body
-  const update = { name, number }
-
-  try {
-    const updated = await Person.findByIdAndUpdate(
-      req.params.id,
-      update,
-      { new: true, runValidators: true, context: 'query' } // ensures Mongoose validators run on update
-    )
-    if (updated) {
-      res.json(updated)
-    } else {
-      res.status(404).json({ error: 'Person not found' })
-    }
-  } catch (err) {
-    next(err)
-  }
-}
-
-module.exports = {
-  getAllPersons,
-  getPersonById,
-  createPerson,
-  deletePerson,
-  updatePerson
-}
+module.exports = router;
